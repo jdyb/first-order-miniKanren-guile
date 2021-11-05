@@ -2,7 +2,7 @@
 (define-module (common)
   #:use-module (srfi srfi-9)
   #:use-module (util) ; assf
-  #:export (struct-out initial-var var/fresh struct-out empty-state state-sub
+  #:export (initial-var var/fresh empty-state state-sub
                        unify walk* reify reify/initial-var))
 
 ;; Logic variables
