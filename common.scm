@@ -1,25 +1,19 @@
-#lang racket
-(provide
-  (struct-out var)
-  initial-var
-  var/fresh
-  (struct-out state)
-  empty-state
-  state-sub
-  unify
-  walk*
-  reify
-  reify/initial-var)
+
+(define-module (common)
+  #:use-module (srfi srfi-9)
+  #:use-module (util) ; assf
+  #:export (struct-out initial-var var/fresh struct-out empty-state state-sub
+                       unify walk* reify reify/initial-var))
 
 ;; Logic variables
-(struct var (name index) #:prefab)
+(define-record-type <var> (mk-var name index) var? (name var-name) (index var-index))
 (define (var=? x1 x2)
   (= (var-index x1) (var-index x2)))
-(define initial-var (var #f 0))
+(define initial-var (mk-var #f 0))
 (define var/fresh
   (let ((index 0))
     (lambda (name) (set! index (+ 1 index))
-      (var name index))))
+      (mk-var name index))))
 
 ;; States
 (define empty-sub '())
@@ -34,8 +28,8 @@
 (define (extend-sub x t sub)
   (and (not (occurs? x t sub)) `((,x . ,t) . ,sub)))
 
-(struct state (sub) #:prefab)
-(define empty-state (state empty-sub))
+(define-record-type <state> (mk-state sub) state? (sub state-sub))
+(define empty-state (mk-state empty-sub))
 
 ;; Unification
 (define (unify/sub u v sub)
@@ -49,7 +43,7 @@
       (else                                (and (eqv? u v) sub)))))
 (define (unify u v st)
   (let ((sub (unify/sub u v (state-sub st))))
-    (and sub (cons (state sub) #f))))
+    (and sub (cons (mk-state sub) #f))))
 
 ;; Reification
 (define (walk* tm sub)
