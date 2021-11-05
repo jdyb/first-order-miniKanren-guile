@@ -93,16 +93,18 @@
 
 (define (evalo expr value) (eval-expo expr '() value))
 
+(define (show . l) (display l) (newline))
+
 (define-syntax test
   (syntax-rules ()
     ((_ name e-actual e-expected)
-     (time (begin
-             (printf "Testing ~s: " name)
+     (begin
+             (show "Testing: " name)
              (let ((actual e-actual) (expected e-expected))
                (if (equal? actual expected)
-                 (printf "~s\n" 'success)
-                 (printf "FAILURE\nEXPECTED: ~s\nACTUAL: ~s\n"
-                         expected actual))))))))
+                 (show 'success)
+                 (show "FAILURE\nEXPECTED: ~s\nACTUAL: ~s\n"
+                         expected actual)))))))
 
 (test 'basic-1
   (run* (q) (== 5 q))
