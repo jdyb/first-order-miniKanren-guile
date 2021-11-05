@@ -4,7 +4,7 @@
   #:use-module (ice-9 match)
   #:use-module (common)
   #:export (<disj> disj <conj> conj <relate> relate <==> == <mplus> mplus
-                   <bind> bind <pause> pause step mature mature?))
+                   <bind> bind <pause> mk-pause step mature mature?))
 
 
 ;; first-order microKanren
@@ -57,12 +57,12 @@
 (define (start st g)
   (match g
     (($ <disj> g1 g2)
-     (step (mplus (pause st g1)
-                  (pause st g2))))
+     (step (mplus (mk-pause st g1)
+                  (mk-pause st g2))))
     (($ <conj> g1 g2)
-     (step (bind (pause st g1) g2)))
+     (step (bind (mk-pause st g1) g2)))
     (($ <relate> thunk _)
-     (pause st (thunk)))
+     (mk-pause st (thunk)))
     (($ <==> t1 t2) (unify t1 t2 st))))
 
 (define (step s)
@@ -78,7 +78,7 @@
      (let ((s (if (mature? s) s (step s))))
        (cond ((not s) #f)
              ((pair? s)
-              (step (mplus (pause (car s) g)
+              (step (mplus (mk-pause (car s) g)
                            (bind (cdr s) g))))
              (else (bind s g)))))
     (($ <pause> st g) (start st g))
