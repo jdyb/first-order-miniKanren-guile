@@ -6,7 +6,7 @@
   (if (procedure? f)
       (if (and (pair? al) (pair? (car al)))
           (if (f (caar al))
-              (cdar al)
+              (car al)
               (assf f (cdr al)))
           (if (null? al)
               #f
