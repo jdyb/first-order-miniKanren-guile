@@ -1,6 +1,5 @@
-#lang racket
-(require "mk-fo.rkt")
+(use-modules (mk-fo))
 
 (display "Running first-order microKanren tests:")
 (newline)
-(include "tests.rkt")
+(include "tests.scm")
