@@ -4,7 +4,7 @@
   #:use-module (ice-9 match)
   #:use-module (common)
   #:export (<disj> disj <conj> conj <relate> relate <==> == <mplus> mplus
-                   <bind> bind <paus> pause step mature mature?))
+                   <bind> bind <pause> pause step mature mature?))
 
 
 ;; first-order microKanren
@@ -45,7 +45,7 @@
   (s2 mplus-s2))
 
 (define-record-type <pause>
-  (pause state goal)
+  (mk-pause state goal)
   pause?
   (state pause-state)
   (goal pause-goal))
