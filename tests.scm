@@ -170,7 +170,7 @@
           (quote (lambda (list (quote app) (var ())
                                (list (quote quote) (var ())))))))))
 
-(displayln "\nBeginning slower tests...")
+(show "\nBeginning slower tests...")
 (test 'evalo-twine
   (run 1 (p q) (evalo p q) (evalo q p))
   '(((quote (app (lambda (list (quote quote)
@@ -186,7 +186,7 @@
                                (list (quote app) (var ())
                                      (list (quote quote) (var ()))))))))))
 
-(displayln "\nThe next test may take many seconds...")
+(show "\nThe next test may take many seconds...")
 (test 'evalo-thrine
   (run 1 (p q r) (evalo p q) (evalo q r) (evalo r p))
   '(((quote (quote (app (lambda (list (quote quote)
@@ -530,7 +530,7 @@
   '((() (_.0 _.1 . _.2) (0 0 1 0 0 0 1))
     ((1) (_.0 _.1 . _.2) (1 1 0 0 0 0 1))))
 
-(displayln "\nThe next test might take a minute...")
+(show "\nThe next test might take a minute...")
 (test 'logo-9
   (run 9 (b q r)
     (logo '(0 0 1 0 0 0 1) b q r)
