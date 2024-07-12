@@ -5,6 +5,13 @@
   conj
   relate
   ==
+  =/=
+  symbolo
+  stringo
+  numbero
+  not-symbolo
+  not-stringo
+  not-numbero
   mplus
   bind
   pause
@@ -15,13 +22,6 @@
 
 
 ;; higher-order microKanren
-
-
-
-
-
-
-
 
 (define (mature? s) (or (not s) (pair? s)))
 (define (mature s)
@@ -36,9 +36,14 @@
   (lambda (st) (bind (pause st g1) g2)))
 (define (relate thunk _)
   (lambda (st) (pause st (thunk))))
-(define (== t1 t2) (lambda (st) (unify t1 t2 st)))
-
-
+(define (== t1 t2) (lambda (st) (state->stream (unify t1 t2 st))))
+(define (=/= t1 t2) (lambda (st) (state->stream (disunify t1 t2 st))))
+(define (symbolo t) (lambda (st) (state->stream (typify t symbol? st))))
+(define (stringo t) (lambda (st) (state->stream (typify t string? st))))
+(define (numbero t) (lambda (st) (state->stream (typify t number? st))))
+(define (not-symbolo t) (lambda (st) (state->stream (distypify t symbol? st))))
+(define (not-stringo t) (lambda (st) (state->stream (distypify t string? st))))
+(define (not-numbero t) (lambda (st) (state->stream (distypify t number? st))))
 
 (define (mplus s1 s2)
   (let ((s1 (if (mature? s1) s1 (s1))))

@@ -106,11 +106,26 @@
                  (show "FAILURE\nEXPECTED: ~s\nACTUAL: ~s\n"
                          expected actual)))))))
 
-(test 'basic-1
-  (run* (q) (== 5 q))
-  '((5)))
+(include "unify-tests.rkt")
+(include "disunify-tests.rkt")
+(include "symbolo-tests.rkt")
+(include "stringo-tests.rkt")
+(include "numbero-tests.rkt")
+(include "symbolo-numbero-tests.rkt")
+(include "not-stringo-tests.rkt")
+(include "not-numbero-tests.rkt")
+(include "not-symbolo-tests.rkt")
+(include "not-symbolo-not-numbero-tests.rkt")
+(include "distype-diseq-tests.rkt")
 
-(test 'appendo-1
+(display "\nRunning remaining tests")
+(newline)
+
+(test 'long-test-0
+  (run* (a b c d) (== a (cons b c)) (symbolo b) (=/= a d) (=/= b d) (== c (cons d b)))
+  '(#s(Ans ((_.0 . (_.1 . _.0)) _.0 (_.1 . _.0) _.1) ((=/= ((_.0 _.1))) (sym _.0)))))
+
+(test 'appendo-0
   (run* (xs ys) (appendo xs ys '(a b c d)))
   '((()        (a b c d))
     ((a)       (b c d))
@@ -118,7 +133,29 @@
     ((a b c)   (d))
     ((a b c d) ())))
 
-(test 'sometimeso-1
+(test 'appendo-1
+  (run* (q) (appendo '(a b c) '(d e) q))
+  '(((a b c d e))))
+
+(test 'appendo-2
+  (run* (q) (appendo q '(d e) '(a b c d e)))
+  '(((a b c))))
+
+(test 'appendo-3
+  (run* (q) (appendo '(a b c) q '(a b c d e)))
+  '(((d e))))
+
+(test 'appendo-4
+  (run 5 (q)
+    (fresh (l s out)
+      (appendo l s out)
+      (== (cons l (cons s (cons out '()))) q)))
+  '(((() _.0 _.0)) (((_.0) _.1 (_.0 . _.1)))
+  (((_.0 _.1) _.2 (_.0 _.1 . _.2))) 
+  (((_.0 _.1 _.2) _.3 (_.0 _.1 _.2 . _.3))) 
+  (((_.0 _.1 _.2 _.3) _.4 (_.0 _.1 _.2 _.3 . _.4)))))
+
+(test 'sometimeso-0
   (run 5 (q) (sometimeso q))
   '((#t) (#t) (#t) (#t) (#t)))
 

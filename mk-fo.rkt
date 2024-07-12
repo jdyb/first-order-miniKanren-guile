@@ -20,5 +20,5 @@
   conj*
   disj*
   )
-(require "microk-ho.rkt")
+(require "microk-fo.rkt")
 (include "mk-syntax.rkt")

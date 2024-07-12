@@ -1,28 +1,34 @@
 #lang racket
 (provide
-  (all-from-out "mk-fo.rkt")
-  prune/stream
-  prune/goal
-  dnf/stream
-  dnf/goal
+ (all-from-out "mk-fo.rkt")
+ prune/stream
+ prune/goal
+ dnf/stream
+ dnf/goal
 
-  strip/stream
-  strip/state
-  pretty/state
-  pretty/stream
-  pretty/goal
+ strip/stream
+ strip/state
+ pretty/state
+ pretty/stream
+ pretty/goal
 
-  parallel-step-simple
-  parallel-step
+ parallel-step-simple
+ parallel-step
 
-  mature/step
-  stream-take/step
-  run/step
-  run*/step
+ mature/step
+ stream-take/step
+ run/step-simplify
+ run/step
+ run*/step
+ step
+ 
+ drive/policy
+ drive/stdio
 
-  explore/stream
-  explore)
+ explore/stream
+ explore)
 
+(require "microk-fo.rkt")
 (require "mk-fo.rkt")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -69,7 +75,12 @@
      (let ((t1 (prune/term t1)) (t2 (prune/term t2)))
        (match (unify t1 t2 st)
          (#f          #f)
-         (`(,st . #f) (pause st (== t1 t2))))))))
+         (st          (pause st (== t1 t2))))))
+    ((=/= t1 t2)
+     (let ((t1 (prune/term t1)) (t2 (prune/term t2)))
+       (match (disunify t1 t2 st)
+         (#f          #f)
+         (st          (pause st (=/= t1 t2))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Transform into Disjunctive Normal Form.
@@ -115,7 +126,7 @@
     ((mplus s1 s2) (mplus (strip/stream s1) (strip/stream s2)))
     ((bind s g)    (bind  (strip/stream s)  g))
     ((pause st g)  (pause (strip/state st)  g))
-    (`(,st . ,s)   `(,(strip/state st) . (strip/stream s)))
+    (`(,st . ,s)   `(,(strip/state st) . ,(strip/stream s)))
     (#f            #f)))
 
 (define (strip/state st)
@@ -166,7 +177,7 @@
      (let ((s (if (mature? s) s (parallel-step-simple s))))
        (cond ((not s)   #f)
              ((pair? s) (parallel-step-simple (mplus (pause (car s) g)
-                                              (bind (cdr s) g)))
+                                                     (bind (cdr s) g)))
 
                         )
              (else      (bind s (parallel-expand g))))))
@@ -183,17 +194,23 @@
   (if (mature? s) s (mature/step step (step s))))
 (define (stream-take/step step n s)
   (if (eqv? 0 n) '()
-    (let ((s (mature/step step s)))
-      (if (pair? s)
-        (cons (car s) (stream-take/step step (and n (- n 1)) (cdr s)))
-        '()))))
+      (let ((s (mature/step step s)))
+        (if (pair? s)
+            (cons (car s) (stream-take/step step (and n (- n 1)) (cdr s)))
+            '()))))
+
+(define (simplify s)
+  (prune/stream (dnf/stream s)))
+(define-syntax run/step-simplify
+  (syntax-rules ()
+    ((_ step n body ...) (map reify/initial-var (stream-take/step
+                                                 (lambda (s) (simplify (step s))) n (simplify (query body ...)))))))
 (define-syntax run/step
   (syntax-rules ()
     ((_ step n body ...) (map reify/initial-var (stream-take/step
-                                                  step n (query body ...))))))
+                                                 step n (query body ...))))))
 (define-syntax run*/step
   (syntax-rules () ((_ step body ...) (run/step step #f body ...))))
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Interactive query exploration
@@ -219,6 +236,7 @@
   (match g
     ((conj g1 g2) (append (goal->constraints st g1) (goal->constraints st g2)))
     ((relate _ d) (list (walked-term (cdr d) st)))
+    ((=/= t1 t2)  `(,(list '=/= (walked-term t1 st) (walked-term t2 st))))
     (_            '())))  ;; == information has already been added to st.
 
 (define (explore/stream step qvars s)
@@ -228,8 +246,8 @@
     (define (qv-prefix qv) (string-append " " (symbol->string qv) " = "))
     (define qv-prefixes (and qvars (map qv-prefix qvars)))
     (if qv-prefixes
-      (for-each (lambda (prefix v) (pp prefix v)) qv-prefixes vs)
-      (for-each (lambda (v) (pp " " v)) vs)))
+        (for-each (lambda (prefix v) (pp prefix v)) qv-prefixes vs)
+        (for-each (lambda (v) (pp " " v)) vs)))
   (define (print-choice s)
     (match s
       ((pause st g)
@@ -261,15 +279,15 @@
       (newline))
     (printf "Current Depth: ~a\n" (length undo))
     (if (= 0 (length choices))
-      (if (= (length results) 0)
-        (printf "Choice FAILED!  Undo to continue.\n")
-        (printf "No more choices available.  Undo to continue.\n"))
-      (printf "Number of Choices: ~a\n" (length choices)))
+        (if (= (length results) 0)
+            (printf "Choice FAILED!  Undo to continue.\n")
+            (printf "No more choices available.  Undo to continue.\n"))
+        (printf "Number of Choices: ~a\n" (length choices)))
     (for-each (lambda (i s)
                 (printf (string-append "\n" margin "Choice ~s:\n") (+ i 1))
                 (print-choice s))
               (range (length choices)) choices)
-    (printf "\n[h]elp, [u]ndo, or choice number> ")
+    (printf "\n[h]elp, [u]ndo, or choice number> \n")
     (define (invalid)
       (displayln "\nInvalid command or choice number.\nHit enter to continue.")
       (read-line) (read-line)
@@ -278,9 +296,9 @@
     (cond ((eof-object? i) (newline))
           ((or (eq? i 'h) (eq? i 'help))
            (displayln
-             (string-append "\nType either the letter 'u' or the"
-                            " number following one of the listed choices."
-                            "\nHit enter to continue."))
+            (string-append "\nType either the letter 'u' or the"
+                           " number following one of the listed choices."
+                           "\nHit enter to continue."))
            (read-line) (read-line)
            (loop s undo))
           ((and (or (eq? i 'u) (eq? i 'undo)) (pair? undo))
@@ -289,6 +307,131 @@
            (loop (stream->choices (step (list-ref choices (- i 1))))
                  (cons (cons i s) undo)))
           (else (invalid)))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Define explore state to maintain the data held at every step
+;; when exploring
+;; https://wiki.haskell.org/Zipper
+(struct explore-context (index siblings choices parent) #:prefab)
+(struct explore-node (index choices expanded-choices) #:prefab)
+;;       a
+;;    /--|--\
+;;   b   c   d
+;;  / \
+;; e   @
+;; would be modeled as (@ as current context):
+;; (1 '(e) (0 '(c d) (-1 '(a) 'top)))
+(struct explore-loc (tree context) #:prefab)
+(define explore-top 'X-TOP)
+(define (init-explore query)
+  (let ([choices (stream->choices query)])
+    (explore-loc (explore-node -1 choices '()) explore-top)))
+
+(define (expand-choice choice step)
+  (let* ([expanded-choices (stream->choices (step choice))])
+    (cond
+      [(null? expanded-choices) '()]
+      [(and (= 1 (length expanded-choices)) (not (state? (car expanded-choices))))
+       (expand-choice (car expanded-choices) step)]
+      [else expanded-choices])))
+(define (expand-choice-node choices step i)
+  (explore-node i (expand-choice (list-ref choices i) step) '()))
+
+;; tree manipulation
+(define (explore-choice exp-loc step choice)
+  (match exp-loc
+    [(explore-loc (explore-node i chs xchs) parent)
+     (let*-values ([(x-ind) (index-where xchs (lambda (xn) (= choice (explore-node-index xn))))]
+                   [(xc hes) (if (not x-ind) (values '() xchs) (split-at xchs x-ind))]
+                   [(expanded-node) (if x-ind (list-ref xchs x-ind) (expand-choice-node chs step choice))]
+                   [(expanded-context) (explore-context choice (append xc hes) chs parent)])
+       (explore-loc expanded-node expanded-context))]))
+(define (explore-undo exp-loc)
+  (match exp-loc
+    [(explore-loc tree (explore-context i siblings ch ctx))
+     (explore-loc (explore-node i ch (cons tree siblings)) ctx)]
+    [(explore-loc t 'X-TOP) (explore-loc t 'X-TOP)]))
+
+;; pretty-print functions
+(define (pp/qvars qvars vs)
+  (define (qv-prefix qv) (string-append " " (symbol->string qv) " = "))
+  (define qv-prefixes (and qvars (map qv-prefix qvars)))
+  (if qv-prefixes
+      (for-each (lambda (prefix v) (pprint/margin "" prefix v)) qv-prefixes vs)
+      (for-each (lambda (v) (pprint/margin "" " " v)) vs)))
+(define (pprint-choice s qvars)
+  (match s
+    [(pause st g)
+      (pp/qvars qvars (walked-term initial-var st))
+      (define cxs (walked-term (goal->constraints st g) st))
+      (unless (null? cxs)
+        (displayln "Constraints:")
+        (for-each (lambda (v) (pprint/margin "" " * " v)) cxs))
+      (when (null? cxs)
+        (displayln "No constraints")
+        (newline))]))
+(define (pprint-result s qvars)
+  (displayln "Result:")
+  (pp/qvars qvars (walked-term initial-var s)))
+(define (pprint-choices choices qvars)
+  (define chs (dropf choices state?))
+  (define results (takef choices state?))
+  (when (and (= 0 (length chs)) (null? results))
+    (printf "No more choices available. Undo to continue.\n"))
+  (unless (null? chs)
+    (printf "Number of Choices: ~a\n" (length chs))
+    (for-each (lambda (i s)
+                (printf (string-append "\nChoice ~s:\n") (+ i 1))
+                (pprint-choice s qvars))
+              (range (length chs)) chs))
+  (unless (null? results)
+    (printf "Number of results: ~a\n" (length results))
+    (for-each (lambda (st)
+                (pprint-result st qvars)
+                (newline))
+              results)))
+
+;; policy-print, policy-read, policy-done?
+(define (pp/explore-tree exp-loc qvars)
+  (define tree (explore-loc-tree exp-loc))
+  #| (printf "Tree: ~s\n" tree) |#
+  #| (printf "Context: ~s\n" (explore-loc-context exp-loc)) |#
+  (pprint-choices (explore-node-choices tree) qvars))
+(define (explore-tree-input)
+  (printf "\n[u]ndo, or choice number> \n")
+  (read))
+(define (explore-tree-finished? exp-loc)
+  (let* ([tree (explore-loc-tree exp-loc)]
+         [choices (explore-node-choices tree)]
+         [finished-index (index-where
+                           choices
+                           (lambda (x) (state? x)))]
+        [valid-index (exact-nonnegative-integer? finished-index)])
+    valid-index))
+
+(define (drive/policy step qvars policy-print policy-read policy-done? init-state)
+  (let loop ([s init-state])
+    (policy-print s qvars)
+    (unless (policy-done? s)
+      (let* ([input (policy-read)]
+             [tree (explore-loc-tree s)])
+        (loop
+          (cond
+            [(and (integer? input) (<= 1 input) (<= input (length (explore-node-choices tree))))
+             (explore-choice s step (- input 1))]
+            [(or (eq? input 'u) (eq? input 'undo)) (explore-undo s)]
+            [else s]))))))
+
+(define-syntax drive/stdio
+  (syntax-rules (query)
+    [(_ step (query (qvars ...) body ...))
+     (drive/policy
+       step
+       '(qvars ...) 
+       pp/explore-tree
+       explore-tree-input
+       explore-tree-finished? 
+       (init-explore (query (qvars ...) body ...)))]))
 
 (define-syntax explore
   (syntax-rules (query)
