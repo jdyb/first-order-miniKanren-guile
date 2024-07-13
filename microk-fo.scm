@@ -3,9 +3,20 @@
   #:use-module (srfi srfi-9)
   #:use-module (ice-9 match)
   #:use-module (common)
-  #:export (<disj> disj <conj> conj <relate> relate <==> == <mplus> mplus
-                   <bind> bind <pause> mk-pause step mature mature?))
-
+  #:export (<disj> disj <conj> conj <relate> relate <==> ==
+                   =/=
+                   <symbolo> symbolo
+                   <stringo> stringo
+                   <numbero> numbero
+                   <not-symbolo> not-symbolo
+                   <not-stringo> not-stringo
+                   <not-numbero> not-numbero
+                   <mplus> mplus
+                   <bind> bind
+                   <pause> mk-pause
+                   step
+                   mature
+                   mature?))
 
 ;; first-order microKanren
 (define-record-type <disj>
@@ -31,6 +42,42 @@
   ==?
   (t1 ==-t1)
   (t2 ==-t2))
+
+(define-record-type <=/=>
+  (=/= t1 t2)
+  =/=?
+  (t1 =/=-t1)
+  (t2 =/=-t2))
+
+(define-record-type <symbolo>
+  (symbolo t)
+  symbolo?
+  (t symbolo-t))
+
+(define-record-type <stringo>
+  (stringo t)
+  stringo?
+  (t stringo-t))
+
+(define-record-type <numbero>
+  (numbero t)
+  numbero?
+  (t numbero-t))
+
+(define-record-type <not-symbolo>
+  (not-symbolo t)
+  not-symbolo?
+  (t not-symbolo-t))
+
+(define-record-type <not-stringo>
+  (not-stringo t)
+  not-stringo?
+  (t not-stringo-t))
+
+(define-record-type <not-numbero>
+  (not-numbero t)
+  not-numbero?
+  (t not-numbero-t))
 
 (define-record-type <bind>
   (bind s g)
@@ -63,7 +110,15 @@
      (step (bind (mk-pause st g1) g2)))
     (($ <relate> thunk _)
      (mk-pause st (thunk)))
-    (($ <==> t1 t2) (unify t1 t2 st))))
+    (($ <==> t1 t2) (unify t1 t2 st))
+    (($ <=/=> t1 t2) (state->stream (disunify t1 t2 st)))
+    (($ <symbolo> t) (state->stream (typify t symbol? st)))
+    (($ <stringo> t) (state->stream (typify t string? st)))
+    (($ <numbero> t) (state->stream (typify t number? st)))
+    (($ <not-symbolo> t) (state->stream (distypify t symbol? st)))
+    (($ <not-stringo> t) (state->stream (distypify t string? st)))
+    (($ <not-numbero> t) (state->stream (distypify t number? st)))
+    ))
 
 (define (step s)
   (match s
