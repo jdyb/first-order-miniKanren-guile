@@ -2,5 +2,5 @@
 set -eufo pipefail
 here="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-time racket "$here/test-ho.rkt"
-time racket "$here/test-fo.rkt"
+time guile -L . "$here/test-ho.scm"
+time guile -L . "$here/test-fo.scm"

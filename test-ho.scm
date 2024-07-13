@@ -1,6 +1,5 @@
-#lang racket
-(require "mk-ho.rkt")
+(use-modules (mk-ho))
 
 (display "Running higher-order microKanren tests:")
 (newline)
-(include "tests.rkt")
+(include "tests.scm")
